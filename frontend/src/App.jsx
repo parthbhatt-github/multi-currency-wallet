@@ -18,7 +18,14 @@ function api(token) {
       },
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.detail || "Request failed");
+    if (!response.ok) {
+      const detail = Array.isArray(data.detail)
+        ? data.detail
+            .map((err) => `${err.loc?.join(".") || "request"}: ${err.msg}`)
+            .join(", ")
+        : data.detail || `Request failed (${response.status})`;
+      throw new Error(detail);
+    }
     return data;
   }
   return { request };
@@ -44,7 +51,15 @@ export function AuthScreen({ onToken }) {
     const path = mode === "signup" ? "/auth/signup" : "/auth/login";
     const body = mode === "signup" ? form : { email: form.email, password: form.password };
     try {
-      const data = await api().request(path, { method: "POST", body: JSON.stringify({ ...body, photo_url: form.photo_url || null }) });
+      const payload =
+        mode === "signup"
+          ? { ...body, photo_url: form.photo_url.trim() || null }
+          : body;
+
+      const data = await api().request(path, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
       onToken(data.access_token);
     } catch (err) {
       setError(err.message);
@@ -119,11 +134,21 @@ export function App() {
 
   async function money(path) {
     setMessage("");
+
+    const amount = Number(moneyForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setMessage("Amount must be greater than 0.");
+      return;
+    }
+
     try {
       await client.request(path, {
         method: "POST",
         idempotencyKey: crypto.randomUUID(),
-        body: JSON.stringify(moneyForm),
+        body: JSON.stringify({
+          ...moneyForm,
+          amount: Number(moneyForm.amount),
+        }),
       });
       setMoneyForm({ ...moneyForm, amount: "", description: "" });
       await load();
@@ -135,11 +160,31 @@ export function App() {
   async function transfer(event) {
     event.preventDefault();
     setMessage("");
+
+    const amount = Number(transferForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setMessage("Amount must be greater than 0.");
+      return;
+    }
+
+    if (!transferForm.recipient_email.trim()) {
+      setMessage("Recipient email is required.");
+      return;
+    }
+
+    if (transferForm.source_currency === transferForm.target_currency) {
+      setMessage("Source and target currencies must be different.");
+      return;
+    }
+
     try {
       await client.request("/transfers", {
         method: "POST",
         idempotencyKey: crypto.randomUUID(),
-        body: JSON.stringify(transferForm),
+        body: JSON.stringify({
+          ...transferForm,
+          amount: Number(transferForm.amount),
+        }),
       });
       setTransferForm({ ...transferForm, recipient_email: "", amount: "", description: "" });
       await load();
@@ -150,8 +195,22 @@ export function App() {
 
   async function updateProfile(event) {
     event.preventDefault();
-    const updated = await client.request("/me", { method: "PATCH", body: JSON.stringify(profile) });
-    setProfile(updated);
+    setMessage("");
+
+    try {
+      const updated = await client.request("/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          full_name: profile.full_name,
+          default_currency: profile.default_currency,
+          photo_url: profile.photo_url || null,
+        }),
+      });
+
+      setProfile(updated);
+    } catch (err) {
+      setMessage(err.message);
+    }
   }
 
   if (!token) return <AuthScreen onToken={persistToken} />;
@@ -213,7 +272,15 @@ export function App() {
                   {currencies.map((currency) => <option key={currency}>{currency}</option>)}
                 </select>
               </Field>
-              <Field label="Amount"><input value={moneyForm.amount} onChange={(e) => setMoneyForm({ ...moneyForm, amount: e.target.value })} /></Field>
+              <Field label="Amount">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={moneyForm.amount}
+                  onChange={(e) => setMoneyForm({ ...moneyForm, amount: e.target.value })}
+                />
+              </Field>
               <Field label="Description"><input value={moneyForm.description} onChange={(e) => setMoneyForm({ ...moneyForm, description: e.target.value })} /></Field>
               <div className="button-row">
                 <button className="primary" onClick={() => money("/wallets/credit")}>Credit</button>
@@ -230,7 +297,15 @@ export function App() {
                 <Field label="From"><select value={transferForm.source_currency} onChange={(e) => setTransferForm({ ...transferForm, source_currency: e.target.value })}>{currencies.map((currency) => <option key={currency}>{currency}</option>)}</select></Field>
                 <Field label="To"><select value={transferForm.target_currency} onChange={(e) => setTransferForm({ ...transferForm, target_currency: e.target.value })}>{currencies.map((currency) => <option key={currency}>{currency}</option>)}</select></Field>
               </div>
-              <Field label="Amount"><input value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} /></Field>
+              <Field label="Amount">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={transferForm.amount}
+                  onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+                />
+              </Field>
               <Field label="Description"><input value={transferForm.description} onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })} /></Field>
               <button className="primary">Send transfer</button>
             </form>
