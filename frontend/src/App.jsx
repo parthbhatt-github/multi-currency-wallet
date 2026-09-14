@@ -40,6 +40,27 @@ export function Field({ label, children }) {
   );
 }
 
+export function ProfileAvatar({ photoUrl, name = "User", size = 56 }) {
+  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || "User"
+  )}&background=random&color=fff&size=128`;
+
+  return (
+    <img
+      src={photoUrl || fallback}
+      alt={`${name || "User"} profile`}
+      width={size}
+      height={size}
+      className="profile-avatar"
+      onError={(event) => {
+        if (event.currentTarget.src !== fallback) {
+          event.currentTarget.src = fallback;
+        }
+      }}
+    />
+  );
+}
+
 export function AuthScreen({ onToken }) {
   const [mode, setMode] = useState("signup");
   const [form, setForm] = useState({ email: "", password: "", full_name: "", default_currency: "USD", photo_url: "" });
@@ -223,9 +244,16 @@ export function App() {
       </aside>
       <section className="workspace">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">Signed in</p>
-            <h1>{profile?.full_name || "Wallet dashboard"}</h1>
+          <div className="profile-heading">
+            <ProfileAvatar
+              photoUrl={profile?.photo_url}
+              name={profile?.full_name}
+              size={56}
+            />
+            <div>
+              <p className="eyebrow">Signed in</p>
+              <h1>{profile?.full_name || "Wallet dashboard"}</h1>
+            </div>
           </div>
           <button className="icon-button" title="Refresh" onClick={load}><RefreshCcw size={18} /></button>
         </header>
@@ -236,7 +264,20 @@ export function App() {
           <div className="panel">
             <h2><UserRound size={18} /> Profile</h2>
             {profile && (
-              <form className="form-stack compact" onSubmit={updateProfile}>
+              <>
+                <div className="profile-preview">
+                  <ProfileAvatar
+                    photoUrl={profile.photo_url}
+                    name={profile.full_name}
+                    size={88}
+                  />
+                  <div>
+                    <strong>{profile.full_name || "User"}</strong>
+                    <span className="muted">{profile.email}</span>
+                  </div>
+                </div>
+
+                <form className="form-stack compact" onSubmit={updateProfile}>
                 <Field label="Name"><input value={profile.full_name} onChange={(e) => setProfile({ ...profile, full_name: e.target.value })} /></Field>
                 <Field label="Default currency">
                   <select value={profile.default_currency} onChange={(e) => setProfile({ ...profile, default_currency: e.target.value })}>
@@ -244,8 +285,9 @@ export function App() {
                   </select>
                 </Field>
                 <Field label="Photo URL"><input value={profile.photo_url || ""} onChange={(e) => setProfile({ ...profile, photo_url: e.target.value || null })} /></Field>
-                <button className="secondary">Save profile</button>
-              </form>
+                  <button className="secondary">Save profile</button>
+                </form>
+              </>
             )}
           </div>
 
@@ -344,3 +386,32 @@ export function App() {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+
+
+/* Profile photo */
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-avatar {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e5e7eb;
+}
+
+.profile-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.profile-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
