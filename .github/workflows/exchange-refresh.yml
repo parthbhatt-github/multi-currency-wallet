@@ -1,0 +1,21 @@
+name: Refresh Exchange Rates
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call deployed refresh endpoint
+        env:
+          API_BASE_URL: ${{ secrets.DEPLOYED_API_BASE_URL }}
+          EXCHANGE_REFRESH_TOKEN: ${{ secrets.EXCHANGE_REFRESH_TOKEN }}
+        run: |
+          test -n "$API_BASE_URL"
+          test -n "$EXCHANGE_REFRESH_TOKEN"
+          curl --fail --show-error --silent \
+            -X POST "$API_BASE_URL/exchange-rates/refresh" \
+            -H "X-Exchange-Refresh-Token: $EXCHANGE_REFRESH_TOKEN"
