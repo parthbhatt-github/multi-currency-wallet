@@ -52,6 +52,7 @@ export function ProfileAvatar({ photoUrl, name = "User", size = 56 }) {
       width={size}
       height={size}
       className="profile-avatar"
+      style={{ display: "block", flex: "0 0 auto", borderRadius: "50%", objectFit: "cover", background: "#e5e7eb" }}
       onError={(event) => {
         if (event.currentTarget.src !== fallback) {
           event.currentTarget.src = fallback;
@@ -244,7 +245,7 @@ export function App() {
       </aside>
       <section className="workspace">
         <header className="topbar">
-          <div className="profile-heading">
+          <div className="profile-heading" style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <ProfileAvatar
               photoUrl={profile?.photo_url}
               name={profile?.full_name}
@@ -265,7 +266,7 @@ export function App() {
             <h2><UserRound size={18} /> Profile</h2>
             {profile && (
               <>
-                <div className="profile-preview">
+                <div className="profile-preview" style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
                   <ProfileAvatar
                     photoUrl={profile.photo_url}
                     name={profile.full_name}
@@ -386,32 +387,3 @@ export function App() {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
-
-
-/* Profile photo */
-.profile-heading {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.profile-avatar {
-  display: block;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #e5e7eb;
-}
-
-.profile-preview {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 18px;
-}
-
-.profile-preview > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
